@@ -72,6 +72,7 @@ Computer :: struct {
     keys: [16]u8,
 
     frame_time: f64,
+    // Speed represents how many instructions to execute in a second.
     speed: i64,
     clock: i64,
     cycles: i64
@@ -79,8 +80,9 @@ Computer :: struct {
 
 computer_new :: proc() -> Computer {
     c := Computer{
-        program_counter = 0x200,
+        program_counter = BASE_PC_ADDRESS,
         speed = 700,
+        clock = time.to_unix_nanoseconds(time.now())
     }
 
     for i in 0..<len(FONT) {
@@ -130,6 +132,16 @@ computer_cycle :: proc(c: ^Computer) {
 
     computer_execute(c, operation)
     c.cycles += 1
+
+    if c.cycles % c.speed == 0 {
+        if c.sound_timer != 0 {
+            c.sound_timer -= 1
+        }
+
+        if c.delay_timer != 0 {
+            c.delay_timer -= 1
+        }
+    }
 }
 
 computer_fetch :: proc(c: ^Computer) -> u16 {

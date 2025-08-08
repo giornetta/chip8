@@ -43,6 +43,8 @@ main :: proc () {
 
     fmt.printf("Loaded program\n")
 
+    bytes := make([^]u32, 64*32)
+
     done := false
     for !done {
         e: sdl3.Event
@@ -57,11 +59,10 @@ main :: proc () {
             }
         }
         
-        computer_cycle(&computer)
+        computer_process(&computer)
 
         sdl3.RenderClear(renderer)
 
-        bytes := make([^]u32, 64*32)
         pitch : i32 = 0
         sdl3.LockTexture(texture, nil, cast(^rawptr) &bytes, &pitch)
         for pixel, idx in computer.display {
@@ -75,8 +76,6 @@ main :: proc () {
 
         sdl3.RenderTexture(renderer, texture, nil, nil)
         sdl3.RenderPresent(renderer)
-
-        time.sleep(time.Millisecond * 16)
     }
 }
 
