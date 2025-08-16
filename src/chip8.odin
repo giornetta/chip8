@@ -385,30 +385,30 @@ computer_execute :: proc(c: ^Computer, operation: Operation) {
             y := c.registers[op.register_op]
 
             result: u16 = u16(x) + u16(y)
-            c.registers[0xF] = result > 255 ? 1 : 0
             c.registers[op.register_dest] = u8(result)
+            c.registers[0xF] = result > 255 ? 1 : 0
         case Operation_Sub:
             x := c.registers[op.register_dest]
             y := c.registers[op.register_op]
 
-            c.registers[0xF] = x > y ? 1 : 0
             c.registers[op.register_dest] = x - y
+            c.registers[0xF] = x >= y ? 1 : 0
         case Operation_Sub_Negate:
             x := c.registers[op.register_dest]
             y := c.registers[op.register_op]
 
-            c.registers[0xF] = y > x ? 1 : 0
             c.registers[op.register_dest] = y - x
+            c.registers[0xF] = y >= x ? 1 : 0
         case Operation_Shift_Left:
             x := c.registers[op.register]
     
-            c.registers[0xF] = x >> 7 == 1 ? 1 : 0
             c.registers[op.register] = x << 1
+            c.registers[0xF] = x >> 7 == 1 ? 1 : 0
         case Operation_Shift_Right:
             x := c.registers[op.register]
 
-            c.registers[0xF] = x & 1 == 1 ? 1 : 0
             c.registers[op.register] = x >> 1
+            c.registers[0xF] = x & 1 == 1 ? 1 : 0
         case Operation_Set_Delay:
             x := c.registers[op.register_source]
             c.delay_timer = x
