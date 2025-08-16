@@ -370,16 +370,19 @@ computer_execute :: proc(c: ^Computer, operation: Operation) {
             y := c.registers[op.register_op]
 
             c.registers[op.register_dest] = x | y
+            c.registers[0xF] = 0
         case Operation_And:
             x := c.registers[op.register_dest]
             y := c.registers[op.register_op]
 
             c.registers[op.register_dest] = x & y
+            c.registers[0xF] = 0
         case Operation_Xor:
             x := c.registers[op.register_dest]
             y := c.registers[op.register_op]
 
             c.registers[op.register_dest] = x ~ y
+            c.registers[0xF] = 0
         case Operation_Add:
             x := c.registers[op.register_dest]
             y := c.registers[op.register_op]
