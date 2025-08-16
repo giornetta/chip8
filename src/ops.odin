@@ -149,11 +149,13 @@ Operation_Sub_Negate :: struct {
 }
 
 Operation_Shift_Right :: struct {
-    register: u8,
+    register_dest: u8,
+    register_src: u8
 }
 
 Operation_Shift_Left :: struct {
-    register: u8,
+    register_dest: u8,
+    register_src: u8
 }
 
 Operation_Load_Random :: struct {

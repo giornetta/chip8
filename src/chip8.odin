@@ -215,13 +215,13 @@ computer_decode :: proc(c: ^Computer, instr: u16) -> Operation {
                     return Operation_Sub{register_dest = x, register_op = y}
                 case 0x6:
                     // 8xy6 - SHR Vx {, Vy}
-                    return Operation_Shift_Right{register = x}
+                    return Operation_Shift_Right{register_dest = x, register_src = y}
                 case 0x7:
                     // 8xy7 - SUBN Vx, Vy
                     return Operation_Sub_Negate{register_dest = x, register_op = y}
                 case 0xE:
                     // 8xyE - SHL Vx {, Vy}
-                    return Operation_Shift_Left{register = x}
+                    return Operation_Shift_Left{register_dest = x, register_src = y}
             }
         case 0x9:
             // 9xy0 - SNE Vx, Vy
@@ -400,15 +400,15 @@ computer_execute :: proc(c: ^Computer, operation: Operation) {
             c.registers[op.register_dest] = y - x
             c.registers[0xF] = y >= x ? 1 : 0
         case Operation_Shift_Left:
-            x := c.registers[op.register]
+            y := c.registers[op.register_src]
     
-            c.registers[op.register] = x << 1
-            c.registers[0xF] = x >> 7 == 1 ? 1 : 0
+            c.registers[op.register_dest] = y << 1
+            c.registers[0xF] = y >> 7 == 1 ? 1 : 0
         case Operation_Shift_Right:
-            x := c.registers[op.register]
+            y := c.registers[op.register_src]
 
-            c.registers[op.register] = x >> 1
-            c.registers[0xF] = x & 1 == 1 ? 1 : 0
+            c.registers[op.register_dest] = y >> 1
+            c.registers[0xF] = y & 1 == 1 ? 1 : 0
         case Operation_Set_Delay:
             x := c.registers[op.register_source]
             c.delay_timer = x
