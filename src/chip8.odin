@@ -32,6 +32,15 @@ BASE_PC_ADDRESS :: 0x200
 DISPLAY_WIDTH :: 64
 DISPLAY_HEIGHT :: 32
 
+Quirk :: enum {
+   FlagReset,
+   Memory,
+   DiplayWait,
+   Clipping,
+   Shifting,
+   Jumping 
+}
+
 Computer :: struct {
     // CHIP-8 has a 4KB RAM, from 0x000 to 0xFFF
     // Sections:
@@ -75,7 +84,9 @@ Computer :: struct {
     // Speed represents how many instructions to execute in a second.
     speed: i64,
     clock: i64,
-    cycles: i64
+    cycles: i64,
+
+    quirks: bit_set[Quirk]
 }
 
 computer_new :: proc() -> Computer {
@@ -116,32 +127,33 @@ computer_load :: proc(c: ^Computer, r: io.Reader) {
 }
 
 computer_process :: proc(c: ^Computer) {
-    now := time.to_unix_nanoseconds(time.now())
-    cycles := (now - c.clock) * c.speed / 1_000_000_000
+    cycles := c.speed / 60
 
-    for c.cycles < cycles {
-        computer_cycle(c)
+    for i in 0 ..< cycles {
+        op := computer_cycle(c)
+        if type_of(op) == Operation_Draw {
+            break
+        }
+    }
+
+    if c.sound_timer != 0 {
+        c.sound_timer -= 1
+    }
+
+     if c.delay_timer != 0 {
+        c.delay_timer -= 1
     }
 }
 
-computer_cycle :: proc(c: ^Computer) {
+computer_cycle :: proc(c: ^Computer) -> Operation {
     instruction := computer_fetch(c)
     operation := computer_decode(c, instruction)
 
-    fmt.printf("Instruction: %#04x, Operation %v\n", instruction, operation)
+   // fmt.printf("Instruction: %#04x, Operation %v\n", instruction, operation)
 
     computer_execute(c, operation)
-    c.cycles += 1
 
-    if c.cycles % c.speed == 0 {
-        if c.sound_timer != 0 {
-            c.sound_timer -= 1
-        }
-
-        if c.delay_timer != 0 {
-            c.delay_timer -= 1
-        }
-    }
+    return operation
 }
 
 computer_fetch :: proc(c: ^Computer) -> u16 {
@@ -370,19 +382,28 @@ computer_execute :: proc(c: ^Computer, operation: Operation) {
             y := c.registers[op.register_op]
 
             c.registers[op.register_dest] = x | y
-            c.registers[0xF] = 0
+
+            if Quirk.FlagReset in c.quirks {
+                c.registers[0xF] = 0
+            }
         case Operation_And:
             x := c.registers[op.register_dest]
             y := c.registers[op.register_op]
 
             c.registers[op.register_dest] = x & y
-            c.registers[0xF] = 0
+            
+            if Quirk.FlagReset in c.quirks {
+                c.registers[0xF] = 0
+            }
         case Operation_Xor:
             x := c.registers[op.register_dest]
             y := c.registers[op.register_op]
 
             c.registers[op.register_dest] = x ~ y
-            c.registers[0xF] = 0
+            
+            if Quirk.FlagReset in c.quirks {
+                c.registers[0xF] = 0
+            }
         case Operation_Add:
             x := c.registers[op.register_dest]
             y := c.registers[op.register_op]

@@ -76,6 +76,8 @@ main :: proc () {
 
         sdl3.RenderTexture(renderer, texture, nil, nil)
         sdl3.RenderPresent(renderer)
+
+        time.sleep(time.Millisecond * 16)
     }
 }
 
