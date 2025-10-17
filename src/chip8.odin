@@ -41,7 +41,7 @@ Quirk :: enum {
    Jumping 
 }
 
-CHIP8_QUIRKS : bit_set[Quirk] : { .FlagReset, .Memory }
+CHIP8_QUIRKS : bit_set[Quirk] : { .FlagReset, .Memory, .Clipping }
 
 
 Computer :: struct {
@@ -457,17 +457,31 @@ computer_execute :: proc(c: ^Computer, operation: Operation) {
             c.registers[0xF] = 0
 
             for row in 0..<op.bytes {
+                // If the Cliiping quirk is enabled, sprites being drawn outside the display limit
+                // will get clipped.
+                // Otherwise, they will wrap around the screen.
                 y := start_y + row
                 if y >= DISPLAY_HEIGHT {
-                    break
+                    if Quirk.Clipping in c.quirks {
+                        break
+                    }
+
+                    y = y % DISPLAY_HEIGHT
                 }
 
                 sprite_row : u8 = c.memory[c.index_register + u16(row)]
                 
                 for col in 0..<8 {
+                    // If the Cliiping quirk is enabled, sprites being drawn outside the display limit
+                    // will get clipped.
+                    // Otherwise, they will wrap around the screen.
                     x := start_x + u8(col)
                     if x >= DISPLAY_WIDTH {
-                        break
+                        if Quirk.Clipping in c.quirks {
+                            break
+                        }
+
+                        x = x % DISPLAY_WIDTH
                     }
 
                     display_idx : u16 = u16(y) * DISPLAY_WIDTH + u16(x)
