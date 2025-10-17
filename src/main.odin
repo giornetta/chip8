@@ -25,7 +25,7 @@ main :: proc () {
     sdl3.SetTextureScaleMode(texture, .NEAREST)
     defer sdl3.DestroyTexture(texture)
 
-    computer := computer_new()
+    computer := computer_new(CHIP8_QUIRKS)
 
     if len(os.args) != 2 {
         return

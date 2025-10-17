@@ -41,6 +41,9 @@ Quirk :: enum {
    Jumping 
 }
 
+CHIP8_QUIRKS : bit_set[Quirk] : { .FlagReset, .Memory }
+
+
 Computer :: struct {
     // CHIP-8 has a 4KB RAM, from 0x000 to 0xFFF
     // Sections:
@@ -89,11 +92,13 @@ Computer :: struct {
     quirks: bit_set[Quirk]
 }
 
-computer_new :: proc() -> Computer {
+
+computer_new :: proc(quirks: bit_set[Quirk]) -> Computer {
     c := Computer{
         program_counter = BASE_PC_ADDRESS,
         speed = 700,
-        clock = time.to_unix_nanoseconds(time.now())
+        clock = time.to_unix_nanoseconds(time.now()),
+        quirks = quirks
     }
 
     for i in 0..<len(FONT) {
@@ -496,9 +501,15 @@ computer_execute :: proc(c: ^Computer, operation: Operation) {
             for r in 0..=op.register_to {
                 c.memory[c.index_register+u16(r)] = c.registers[r]
             }
+            if Quirk.Memory in c.quirks {
+                c.index_register += 1 + u16(op.register_to)
+            }
         case Operation_Load_Registers:
             for r in 0..=op.register_to {
                 c.registers[r] = c.memory[c.index_register+u16(r)]
+            }
+            if Quirk.Memory in c.quirks {
+                c.index_register += 1 + u16(op.register_to)
             }
         }
 }
