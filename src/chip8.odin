@@ -1,6 +1,5 @@
 package chip8
 
-import "core:time"
 import "core:io"
 import "core:fmt"
 import "core:math/rand"
@@ -37,7 +36,7 @@ Quirk :: enum {
     FlagReset,
     // If enabled, he save and load opcodes (Fx55 and Fx65) increment the index register. 
     Memory,
-    // If enabled, d√rawing sprites to the display waits for the vertical blank interrupt, limiting their speed to max 60 sprites per second.
+    // If enabled, drawing sprites to the display waits for the vertical blank interrupt, limiting their speed to max 60 sprites per second.
     DiplayWait,
     // If enabled, sprites will get clipped instead of wrapping around the screen. 
     Clipping,
@@ -46,6 +45,7 @@ Quirk :: enum {
     Jumping
 }
 
+// CHIP8_QUIRKS are the quirks that should be enabled on a classical CHIP-8 platform.
 CHIP8_QUIRKS : bit_set[Quirk] : { .FlagReset, .Memory, .Clipping, .DiplayWait }
 
 
@@ -89,11 +89,8 @@ Computer :: struct {
     keys: [16]u8,
     last_frame_keys: [16]u8,
 
-    frame_time: f64,
     // Speed represents how many instructions to execute in a second.
     speed: i64,
-    clock: i64,
-    cycles: i64,
 
     quirks: bit_set[Quirk]
 }
@@ -103,7 +100,6 @@ computer_new :: proc(quirks: bit_set[Quirk]) -> Computer {
     c := Computer{
         program_counter = BASE_PC_ADDRESS,
         speed = 700,
-        clock = time.to_unix_nanoseconds(time.now()),
         quirks = quirks
     }
 
