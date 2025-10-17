@@ -1,6 +1,5 @@
 package chip8
 
-import "core:fmt"
 import "core:flags"
 import "core:io"
 import "core:os"
