@@ -33,12 +33,16 @@ DISPLAY_WIDTH :: 64
 DISPLAY_HEIGHT :: 32
 
 Quirk :: enum {
-   FlagReset,
-   Memory,
-   DiplayWait,
-   Clipping,
-   Shifting,
-   Jumping 
+    // If enabled, the AND, OR and XOR opcodes (8xy1, 8xy2 and 8xy3) reset the flags register to zero.
+    FlagReset,
+    // If enabled, he save and load opcodes (Fx55 and Fx65) increment the index register. 
+    Memory,
+    DiplayWait,
+    // If enabled, sprites will get clipped instead of wrapping around the screen. 
+    Clipping,
+    // If enabled, The shift opcodes (8xy6 and 8xyE) only operate on vX.
+    Shifting,
+    Jumping 
 }
 
 CHIP8_QUIRKS : bit_set[Quirk] : { .FlagReset, .Memory, .Clipping }
@@ -429,15 +433,32 @@ computer_execute :: proc(c: ^Computer, operation: Operation) {
             c.registers[op.register_dest] = y - x
             c.registers[0xF] = y >= x ? 1 : 0
         case Operation_Shift_Left:
-            y := c.registers[op.register_src]
-    
-            c.registers[op.register_dest] = y << 1
-            c.registers[0xF] = y >> 7 == 1 ? 1 : 0
-        case Operation_Shift_Right:
-            y := c.registers[op.register_src]
+            // Starting with CHIP-48 and SUPER-CHIP, these instructions were changed
+            // so that they shifted VX in place, and ignored the Y completely.
+            // This is implemented by the Shifting quirk.
+            if Quirk.Shifting in c.quirks {
+                x := c.registers[op.register_dest]
 
-            c.registers[op.register_dest] = y >> 1
-            c.registers[0xF] = y & 1 == 1 ? 1 : 0
+                c.registers[op.register_dest] = x << 1
+                c.registers[0xF] = x >> 7 == 1 ? 1 : 0
+            } else {
+                y := c.registers[op.register_src]
+                
+                c.registers[op.register_dest] = y << 1
+                c.registers[0xF] = y >> 7 == 1 ? 1 : 0
+            }
+        case Operation_Shift_Right:
+            if Quirk.Shifting in c.quirks {
+                x := c.registers[op.register_dest]
+
+                c.registers[op.register_dest] = x >> 1
+                c.registers[0xF] = x & 1 == 1 ? 1 : 0
+            } else {
+                y := c.registers[op.register_src]
+
+                c.registers[op.register_dest] = y >> 1
+                c.registers[0xF] = y & 1 == 1 ? 1 : 0
+            }
         case Operation_Set_Delay:
             x := c.registers[op.register_source]
             c.delay_timer = x
