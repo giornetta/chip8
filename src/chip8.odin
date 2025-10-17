@@ -314,7 +314,14 @@ computer_execute :: proc(c: ^Computer, operation: Operation) {
             c.program_counter = c.stack[c.stack_pointer]
             c.stack_pointer -= 1
         case Operation_Jump:
-            c.program_counter = op.location
+            if Quirk.Jumping in c.quirks {
+                x := u8((op.location >> 8) & 0xF)
+                vx := c.registers[x]
+
+                c.program_counter = op.location + u16(vx)
+            } else {
+                c.program_counter = op.location
+            }
         case Operation_Jump_Offset:
             offset := c.registers[0]
 
