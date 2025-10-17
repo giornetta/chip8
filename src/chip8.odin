@@ -37,15 +37,16 @@ Quirk :: enum {
     FlagReset,
     // If enabled, he save and load opcodes (Fx55 and Fx65) increment the index register. 
     Memory,
+    // If enabled, d√rawing sprites to the display waits for the vertical blank interrupt, limiting their speed to max 60 sprites per second.
     DiplayWait,
     // If enabled, sprites will get clipped instead of wrapping around the screen. 
     Clipping,
     // If enabled, The shift opcodes (8xy6 and 8xyE) only operate on vX.
     Shifting,
-    Jumping 
+    Jumping
 }
 
-CHIP8_QUIRKS : bit_set[Quirk] : { .FlagReset, .Memory, .Clipping }
+CHIP8_QUIRKS : bit_set[Quirk] : { .FlagReset, .Memory, .Clipping, .DiplayWait }
 
 
 Computer :: struct {
@@ -138,13 +139,6 @@ computer_load :: proc(c: ^Computer, r: io.Reader) {
 computer_process :: proc(c: ^Computer) {
     cycles := c.speed / 60
 
-    for i in 0 ..< cycles {
-        op := computer_cycle(c)
-        if type_of(op) == Operation_Draw {
-            break
-        }
-    }
-
     if c.sound_timer != 0 {
         c.sound_timer -= 1
     }
@@ -152,6 +146,15 @@ computer_process :: proc(c: ^Computer) {
      if c.delay_timer != 0 {
         c.delay_timer -= 1
     }
+
+    for i in 0 ..< cycles {
+        op := computer_cycle(c)
+        if Quirk.DiplayWait in c.quirks {
+            if _, ok := op.(Operation_Draw); ok {
+                break
+            }
+        }
+    }    
 }
 
 computer_cycle :: proc(c: ^Computer) -> Operation {
