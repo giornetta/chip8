@@ -43,7 +43,8 @@ main :: proc () {
 
     fmt.printf("Loaded program\n")
 
-    bytes := make([^]u32, 64*32)
+    bytes := make([]u32, 64*32)
+    defer delete(bytes)
 
     done := false
     for !done {

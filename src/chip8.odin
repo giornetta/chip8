@@ -37,7 +37,7 @@ Quirk :: enum {
     // If enabled, he save and load opcodes (Fx55 and Fx65) increment the index register. 
     Memory,
     // If enabled, drawing sprites to the display waits for the vertical blank interrupt, limiting their speed to max 60 sprites per second.
-    DiplayWait,
+    DisplayWait,
     // If enabled, sprites will get clipped instead of wrapping around the screen. 
     Clipping,
     // If enabled, The shift opcodes (8xy6 and 8xyE) only operate on vX.
@@ -46,7 +46,7 @@ Quirk :: enum {
 }
 
 // CHIP8_QUIRKS are the quirks that should be enabled on a classical CHIP-8 platform.
-CHIP8_QUIRKS : bit_set[Quirk] : { .FlagReset, .Memory, .Clipping, .DiplayWait }
+CHIP8_QUIRKS : bit_set[Quirk] : { .FlagReset, .Memory, .Clipping, .DisplayWait }
 
 
 Computer :: struct {
@@ -128,7 +128,7 @@ computer_load :: proc(c: ^Computer, r: io.Reader) {
         if n > 0 {
             fmt.printf("Read byte: %#02x\n", buffer[0])
             c.memory[BASE_PC_ADDRESS+i] = buffer[0]
-            i +=1
+            i += 1
         }
     }
 }
@@ -146,7 +146,7 @@ computer_process :: proc(c: ^Computer) {
 
     for i in 0 ..< cycles {
         op := computer_cycle(c)
-        if Quirk.DiplayWait in c.quirks {
+        if Quirk.DisplayWait in c.quirks {
             if _, ok := op.(Operation_Draw); ok {
                 break
             }
@@ -377,11 +377,13 @@ computer_execute :: proc(c: ^Computer, operation: Operation) {
             c.registers[op.register_dest] = c.delay_timer
         case Operation_Load_Key:
             is_key_pressed := false
-            key_pressed : u8
+            key_pressed: u8
+
             for key in 0x0..=0xF {
                 if c.last_frame_keys[key] == 1 {
                     is_key_pressed = true
                     key_pressed = u8(key)
+
                     c.registers[op.register_dest] = u8(key)
                     break                  
                 }
@@ -487,13 +489,13 @@ computer_execute :: proc(c: ^Computer, operation: Operation) {
             char := c.registers[op.register_sprite]
             c.index_register = FONT_ADDRESS + u16(char) * FONT_CHARACTER_SIZE
         case Operation_Draw:
-            start_x := c.registers[op.register_x] % 64
-            start_y := c.registers[op.register_y] % 32
+            start_x := c.registers[op.register_x] % DISPLAY_WIDTH
+            start_y := c.registers[op.register_y] % DISPLAY_HEIGHT
 
             c.registers[0xF] = 0
 
             for row in 0..<op.bytes {
-                // If the Cliiping quirk is enabled, sprites being drawn outside the display limit
+                // If the Clipping quirk is enabled, sprites being drawn outside the display limit
                 // will get clipped.
                 // Otherwise, they will wrap around the screen.
                 y := start_y + row
@@ -508,7 +510,7 @@ computer_execute :: proc(c: ^Computer, operation: Operation) {
                 sprite_row : u8 = c.memory[c.index_register + u16(row)]
                 
                 for col in 0..<8 {
-                    // If the Cliiping quirk is enabled, sprites being drawn outside the display limit
+                    // If the Clipping quirk is enabled, sprites being drawn outside the display limit
                     // will get clipped.
                     // Otherwise, they will wrap around the screen.
                     x := start_x + u8(col)
