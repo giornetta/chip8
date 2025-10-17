@@ -87,6 +87,7 @@ Computer :: struct {
     // | A | 0 | B | F |
     // -----------------
     keys: [16]u8,
+    last_frame_keys: [16]u8,
 
     frame_time: f64,
     // Speed represents how many instructions to execute in a second.
@@ -154,7 +155,9 @@ computer_process :: proc(c: ^Computer) {
                 break
             }
         }
-    }    
+    }
+    
+    c.last_frame_keys = c.keys
 }
 
 computer_cycle :: proc(c: ^Computer) -> Operation {
@@ -378,15 +381,21 @@ computer_execute :: proc(c: ^Computer, operation: Operation) {
             c.registers[op.register_dest] = c.delay_timer
         case Operation_Load_Key:
             is_key_pressed := false
+            key_pressed : u8
             for key in 0x0..=0xF {
-                if c.keys[key] == 1 {
+                if c.last_frame_keys[key] == 1 {
                     is_key_pressed = true
+                    key_pressed = u8(key)
                     c.registers[op.register_dest] = u8(key)
                     break                  
                 }
             }
 
             if !is_key_pressed {
+                c.program_counter -= 2
+            }
+
+            if c.keys[key_pressed] != 0 {
                 c.program_counter -= 2
             }
         case Operation_Load_Random:
