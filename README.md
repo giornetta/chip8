@@ -79,7 +79,7 @@ CHIP-8 Keypad          Keyboard
 
 ### Timers
 
-Both delay and sound timers decrement at 60Hz when non-zero. The sound timer should trigger audio output while greater than zero (currently not implemented).
+Both delay and sound timers decrement at 60Hz when non-zero. The sound timer should trigger audio output while greater than zero.
 
 ## ROMs
 
