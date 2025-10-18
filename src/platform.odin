@@ -7,7 +7,7 @@ import "vendor:sdl3"
 WINDOW_WIDTH :: 960
 WINDOW_HEIGHT :: 480
 
-AUDIO_SAMPLE_RATE :: 48000
+AUDIO_SAMPLE_RATE :: 8000
 AUDIO_AMPLITUDE :: .75
 AUDIO_FREQUENCY :: 880.0
 
@@ -80,7 +80,7 @@ platform_init :: proc(config: Platform_Config) -> (p: Platform, ok: bool) {
     audio_spec := sdl3.AudioSpec{
         channels = 1,
         format = .F32,
-        freq = 8000,
+        freq = AUDIO_SAMPLE_RATE,
     }
     p.audio_stream = sdl3.OpenAudioDeviceStream(sdl3.AUDIO_DEVICE_DEFAULT_PLAYBACK, &audio_spec, nil, nil)
     if p.audio_stream == nil {
