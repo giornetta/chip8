@@ -1,15 +1,21 @@
 package chip8
 
 import "core:fmt"
+import "core:math"
 import "vendor:sdl3"
 
 WINDOW_WIDTH :: 960
 WINDOW_HEIGHT :: 480
 
+AUDIO_SAMPLE_RATE :: 48000
+AUDIO_AMPLITUDE :: .75
+AUDIO_FREQUENCY :: 880.0
+
 Platform :: struct {
     window: ^sdl3.Window,
     renderer: ^sdl3.Renderer,
     texture: ^sdl3.Texture,
+    audio_stream: ^sdl3.AudioStream,
 
     render_buffer: []u32,
     
@@ -42,22 +48,22 @@ Platform_Config :: struct {
 }
 
 platform_init :: proc(config: Platform_Config) -> (p: Platform, ok: bool) {
-    if !sdl3.Init({.VIDEO, .EVENTS}) {
-        fmt.eprintln("Failed to initialize SDL3")
+    if !sdl3.Init({.VIDEO, .EVENTS, .AUDIO}) {
+        fmt.eprintfln("Failed to initialize SDL3: %v", sdl3.GetError())
         return {}, false
     }
     defer if !ok { sdl3.Quit() }
 
     p.window = sdl3.CreateWindow("[O] CHIP8", WINDOW_WIDTH, WINDOW_HEIGHT, {})
     if p.window == nil {
-        fmt.eprintln("Failed to create window")
+        fmt.eprintfln("Failed to create window: %v", sdl3.GetError())
         return {}, false
     }
     defer if !ok { sdl3.DestroyWindow(p.window) }
 
     p.renderer = sdl3.CreateRenderer(p.window, nil)
     if p.renderer == nil {
-        fmt.eprintln("Failed to create renderer")
+        fmt.eprintfln("Failed to create renderer: %v", sdl3.GetError())
         return {}, false
     }
     defer if !ok { sdl3.DestroyRenderer(p.renderer) }
@@ -66,17 +72,27 @@ platform_init :: proc(config: Platform_Config) -> (p: Platform, ok: bool) {
 
     p.texture = sdl3.CreateTexture(p.renderer, .RGBA8888, .STREAMING, 64, 32)
     if p.texture == nil {
-        fmt.eprintln("Failed to create texture")
+        fmt.eprintfln("Failed to create texture: %v", sdl3.GetError())
         return {}, false
     }
     defer if !ok { sdl3.DestroyTexture(p.texture) }
 
     sdl3.SetTextureScaleMode(p.texture, .NEAREST)
 
+    audio_spec := sdl3.AudioSpec{
+        channels = 1,
+        format = .F32,
+        freq = 8000,
+    }
+    p.audio_stream = sdl3.OpenAudioDeviceStream(sdl3.AUDIO_DEVICE_DEFAULT_PLAYBACK, &audio_spec, nil, nil)
+    if p.audio_stream == nil {
+        fmt.eprintfln("Failed to create audio stream: %v", sdl3.GetError())
+        return {}, false
+    }
+    sdl3.ResumeAudioStreamDevice(p.audio_stream)
+
     p.render_buffer = make([]u32, 64*32)
-
     p.color_scheme = BUILTIN_COLORSCHEMES[config.color_scheme]
-
     p.should_quit = false
 
     return p, true
@@ -85,6 +101,7 @@ platform_init :: proc(config: Platform_Config) -> (p: Platform, ok: bool) {
 platform_destroy :: proc(p: ^Platform) {
     if p.render_buffer != nil { delete(p.render_buffer) }
 
+    if p.audio_stream != nil { sdl3.DestroyAudioStream(p.audio_stream) }
     if p.texture != nil { sdl3.DestroyTexture(p.texture) }
     if p.renderer != nil { sdl3.DestroyRenderer(p.renderer) }
     if p.window != nil { sdl3.DestroyWindow(p.window) }
@@ -160,4 +177,27 @@ platform_render :: proc(p: ^Platform, display: []u8) {
 
     sdl3.RenderTexture(p.renderer, p.texture, nil, nil)
     sdl3.RenderPresent(p.renderer)
+}
+
+platform_play_sound :: proc(p: ^Platform, c: ^Computer) {
+    if c.sound_timer == 0 {
+        sdl3.ClearAudioStream(p.audio_stream)
+        return
+    }
+
+    samples: [256]f32
+    generate_audio_samples(samples[:])
+    sdl3.PutAudioStreamData(p.audio_stream, raw_data(samples[:]), size_of(samples))
+}
+
+generate_audio_samples :: proc(buffer: []f32) {
+    @static phase: f32 = 0
+
+    for i in 0..<len(buffer) {
+        buffer[i] = math.sin_f32(phase) * AUDIO_AMPLITUDE
+        phase += 2.0 * math.PI * AUDIO_FREQUENCY / AUDIO_SAMPLE_RATE
+        if phase > 2.0 * math.PI {
+            phase -= 2.0 * math.PI
+        }
+    }
 }

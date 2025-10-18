@@ -37,6 +37,7 @@ main :: proc () {
         computer_process(&computer)
 
         platform_render(&platform, computer.display[:])
+        platform_play_sound(&platform, &computer)
 
         time.sleep(time.Millisecond * 16)
     }
