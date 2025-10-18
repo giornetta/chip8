@@ -17,8 +17,6 @@ Platform :: struct {
     texture: ^sdl3.Texture,
     audio_stream: ^sdl3.AudioStream,
 
-    render_buffer: []u32,
-    
     should_quit: bool,
 
     color_scheme: Color_Scheme,
@@ -91,7 +89,6 @@ platform_init :: proc(config: Platform_Config) -> (p: Platform, ok: bool) {
     }
     sdl3.ResumeAudioStreamDevice(p.audio_stream)
 
-    p.render_buffer = make([]u32, 64*32)
     p.color_scheme = BUILTIN_COLORSCHEMES[config.color_scheme]
     p.should_quit = false
 
@@ -99,9 +96,11 @@ platform_init :: proc(config: Platform_Config) -> (p: Platform, ok: bool) {
 }
 
 platform_destroy :: proc(p: ^Platform) {
-    if p.render_buffer != nil { delete(p.render_buffer) }
+    if p.audio_stream != nil {
+        sdl3.PauseAudioStreamDevice(p.audio_stream)
+        sdl3.DestroyAudioStream(p.audio_stream)
+    }
 
-    if p.audio_stream != nil { sdl3.DestroyAudioStream(p.audio_stream) }
     if p.texture != nil { sdl3.DestroyTexture(p.texture) }
     if p.renderer != nil { sdl3.DestroyRenderer(p.renderer) }
     if p.window != nil { sdl3.DestroyWindow(p.window) }
@@ -164,13 +163,15 @@ platform_render :: proc(p: ^Platform, display: []u8) {
     sdl3.RenderClear(p.renderer)
 
     pitch : i32 = 0
+    pixels: rawptr
     
-    sdl3.LockTexture(p.texture, nil, cast(^rawptr) &p.render_buffer, &pitch)
+    sdl3.LockTexture(p.texture, nil, &pixels, &pitch)
+    buffer := ([^]u32)(pixels)[:64*32]
     for pixel, idx in display {
         if pixel == 1 {
-            p.render_buffer[idx] = p.color_scheme.foreground
+            buffer[idx] = p.color_scheme.foreground
         } else {
-            p.render_buffer[idx] = p.color_scheme.background
+            buffer[idx] = p.color_scheme.background
         }
     }
     sdl3.UnlockTexture(p.texture)

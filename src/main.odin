@@ -17,6 +17,7 @@ main :: proc () {
         flags.write_usage(os.stream_from_handle(os.stderr), typeid_of(Config), os.args[0], .Unix)
         return
     }
+    defer os.close(config.rom_path)
 
     platform, ok := platform_init(Platform_Config{
         color_scheme = config.color_scheme

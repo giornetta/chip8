@@ -126,7 +126,6 @@ computer_load :: proc(c: ^Computer, r: io.Reader) {
         }
 
         if n > 0 {
-            fmt.printf("Read byte: %#02x\n", buffer[0])
             c.memory[BASE_PC_ADDRESS+i] = buffer[0]
             i += 1
         }
@@ -159,9 +158,7 @@ computer_process :: proc(c: ^Computer) {
 computer_cycle :: proc(c: ^Computer) -> Operation {
     instruction := computer_fetch(c)
     operation := computer_decode(c, instruction)
-
-   // fmt.printf("Instruction: %#04x, Operation %v\n", instruction, operation)
-
+    
     computer_execute(c, operation)
 
     return operation
