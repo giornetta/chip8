@@ -1,7 +1,6 @@
 package chip8
 
 import "core:io"
-import "core:fmt"
 import "core:math/rand"
 
 FONT := [5*16]u8  {
@@ -95,12 +94,22 @@ Computer :: struct {
     quirks: bit_set[Quirk]
 }
 
+Computer_Config :: struct {
+    clock_speed: i64,
+    quirks: bit_set[Quirk]
+}
 
-computer_new :: proc(quirks: bit_set[Quirk]) -> Computer {
+DEFAULT_COMPUTER_CONFIG :: Computer_Config{
+    clock_speed = 700,
+    quirks = CHIP8_QUIRKS,
+}
+
+
+computer_new :: proc(config: Computer_Config) -> Computer {
     c := Computer{
         program_counter = BASE_PC_ADDRESS,
-        speed = 700,
-        quirks = quirks
+        speed = config.clock_speed,
+        quirks = config.quirks
     }
 
     for i in 0..<len(FONT) {

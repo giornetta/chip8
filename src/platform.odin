@@ -1,5 +1,6 @@
 package chip8
 
+import "core:time"
 import "core:fmt"
 import "core:math"
 import "vendor:sdl3"
@@ -18,6 +19,7 @@ Platform :: struct {
     audio_stream: ^sdl3.AudioStream,
 
     should_quit: bool,
+    is_paused: bool,
 
     color_scheme: Color_Scheme,
 }
@@ -90,9 +92,23 @@ platform_init :: proc(config: Platform_Config) -> (p: Platform, ok: bool) {
     sdl3.ResumeAudioStreamDevice(p.audio_stream)
 
     p.color_scheme = BUILTIN_COLORSCHEMES[config.color_scheme]
-    p.should_quit = false
 
     return p, true
+}
+
+platform_run :: proc(p: ^Platform, c: ^Computer) {
+    for !p.should_quit {
+        platform_handle_events(p, c)
+
+        if !p.is_paused {
+            computer_process(c)
+
+            platform_render(p, c.display[:])
+            platform_play_sound(p, c)
+        }
+
+        time.sleep(time.Millisecond * 16)
+    }
 }
 
 platform_destroy :: proc(p: ^Platform) {
@@ -115,14 +131,14 @@ platform_handle_events :: proc(p: ^Platform, c: ^Computer) {
             case .QUIT:
                 p.should_quit = true
             case .KEY_DOWN:
-                platform_handle_key(c, e.key.scancode, 1)
+                platform_handle_key(p, c, e.key.scancode, 1)
             case .KEY_UP:
-                platform_handle_key(c, e.key.scancode, 0)
+                platform_handle_key(p, c, e.key.scancode, 0)
         }
     }
 }
 
-platform_handle_key :: proc(c: ^Computer, scancode: sdl3.Scancode, value: u8) {
+platform_handle_key :: proc(p: ^Platform, c: ^Computer, scancode: sdl3.Scancode, value: u8) {
     #partial switch scancode {
         case ._1:
             c.keys[0x1] = value
@@ -156,6 +172,10 @@ platform_handle_key :: proc(c: ^Computer, scancode: sdl3.Scancode, value: u8) {
             c.keys[0xB] = value
         case .V:
             c.keys[0xF] = value
+        case .P:
+            if value == 0 {
+                p.is_paused = !p.is_paused
+            }
     }
 }
 

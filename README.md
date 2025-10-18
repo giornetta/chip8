@@ -60,6 +60,12 @@ CHIP-8 Keypad          Keyboard
 └───┴───┴───┴───┘      └───┴───┴───┴───┘
 ```
 
+### Emulator Controls
+
+The emulator provides the following controls:
+
+- **P** - Pause/unpause emulation
+
 ## Technical Details
 
 ### Memory Map
