@@ -6,7 +6,8 @@ import "core:os"
 import "core:time"
 
 Config :: struct {
-    clock_speed: i64 `usage:"CPU clock speed in Hz" default:"700"`,
+    clock_speed: i64 `usage:"CPU clock speed in Hz (default: 700)" default:"700"`,
+    color_scheme: Color_Scheme_Type `usage:"Name of the colorscheme to use (Classic, Amber, Green, Blue) (default: Classic)" default:"Classic"`,
     rom_path: os.Handle `args:"pos=0,required,file=r" usage:"path of the ROM to execute"`,
 }
 
@@ -17,7 +18,9 @@ main :: proc () {
         return
     }
 
-    platform, ok := platform_init()
+    platform, ok := platform_init(Platform_Config{
+        color_scheme = config.color_scheme
+    })
     if !ok {
         return
     }

@@ -14,9 +14,34 @@ Platform :: struct {
     render_buffer: []u32,
     
     should_quit: bool,
+
+    color_scheme: Color_Scheme,
 }
 
-platform_init :: proc() -> (p: Platform, ok: bool) {
+Color_Scheme :: struct {
+    foreground: u32,
+    background: u32,
+}
+
+Color_Scheme_Type :: enum {
+    Classic,
+    Amber,
+    Green,
+    Blue,
+}
+
+BUILTIN_COLORSCHEMES := [Color_Scheme_Type]Color_Scheme {
+    .Classic = {foreground = 0xFFFFFFFF, background = 0x000000FF },
+    .Amber   = {foreground = 0xFFB000FF, background = 0x000000FF},
+    .Green = {foreground = 0x33FF33FF, background = 0x001100FF},
+    .Blue           = {foreground = 0x6495EDFF, background = 0x000033FF},
+}
+
+Platform_Config :: struct {
+    color_scheme: Color_Scheme_Type,
+}
+
+platform_init :: proc(config: Platform_Config) -> (p: Platform, ok: bool) {
     if !sdl3.Init({.VIDEO, .EVENTS}) {
         fmt.eprintln("Failed to initialize SDL3")
         return {}, false
@@ -49,6 +74,8 @@ platform_init :: proc() -> (p: Platform, ok: bool) {
     sdl3.SetTextureScaleMode(p.texture, .NEAREST)
 
     p.render_buffer = make([]u32, 64*32)
+
+    p.color_scheme = BUILTIN_COLORSCHEMES[config.color_scheme]
 
     p.should_quit = false
 
@@ -124,9 +151,9 @@ platform_render :: proc(p: ^Platform, display: []u8) {
     sdl3.LockTexture(p.texture, nil, cast(^rawptr) &p.render_buffer, &pitch)
     for pixel, idx in display {
         if pixel == 1 {
-            p.render_buffer[idx] = 0xFFFFFFFF
+            p.render_buffer[idx] = p.color_scheme.foreground
         } else {
-            p.render_buffer[idx] = 0x000000FF
+            p.render_buffer[idx] = p.color_scheme.background
         }
     }
     sdl3.UnlockTexture(p.texture)

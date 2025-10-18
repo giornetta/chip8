@@ -1,8 +1,5 @@
 package chip8
 
-import "core:fmt"
-import "core:reflect"
-
 Operation :: union {
     Operation_Nop,
     Operation_Clear,
