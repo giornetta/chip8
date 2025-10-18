@@ -20,6 +20,7 @@ CHIP-8 is an interpreted programming language developed in the mid-1970s. It was
 - Configurable quirks system for compatibility with different CHIP-8 implementations
 - 60Hz timer update rate
 - Configurable CPU speed (default: 700 instructions per second)
+- Multiple built-in color schemes
 
 ## Prerequisites
 
@@ -39,6 +40,8 @@ Run the emulator with a CHIP-8 ROM file:
 ```bash
 ./chip8 path/to/rom.ch8
 ```
+
+Use `./chip8 --help` to see available command-line options for configuring the emulator.
 
 ### Keyboard Layout
 

@@ -2,4 +2,4 @@
 
 bin/
 programs/roms
-./chip8
+chip8
