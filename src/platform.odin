@@ -2,6 +2,7 @@ package chip8
 
 import "core:fmt"
 import "core:math"
+import "core:strings"
 import "core:time"
 import "vendor:sdl3"
 
@@ -188,57 +189,16 @@ platform_render :: proc(p: ^Platform, c: ^Computer) {
 	im_sdl.NewFrame()
 	im.NewFrame()
 
-	// Create a main menu bar at the top
-	MENU_BAR_HEIGHT :: 20
-
-	if im.BeginMainMenuBar() {
-		if im.BeginMenu("File") {
-			if im.MenuItem("Open") {
-
-			}
-
-			if im.MenuItem("Exit") {
-				p.should_quit = true
-			}
-
-			im.EndMenu()
-		}
-		im.EndMainMenuBar()
-	}
+	MENU_BAR_HEIGHT :: 0
 
 
 	PADDING :: 10
-	PANE_WIDTH :: (WINDOW_WIDTH - EMULATOR_WIDTH - PADDING * 2) / 2
+	PANE_WIDTH :: (WINDOW_WIDTH - EMULATOR_WIDTH - PADDING * 2)
 	PANE_HEIGHT :: WINDOW_HEIGHT - MENU_BAR_HEIGHT
 
-	// Left sidebar with controls
-	LEFT_PANE_X :: 0
-	LEFT_PANE_Y :: MENU_BAR_HEIGHT
-	{
-		im.SetNextWindowPos({LEFT_PANE_X, LEFT_PANE_Y})
-		im.SetNextWindowSize({PANE_WIDTH, PANE_HEIGHT})
-		im.Begin("Controls", nil, {.NoMove, .NoResize, .NoCollapse})
-
-		im.Text("Emulator Controls")
-		im.Separator()
-
-		if im.Button(p.is_paused ? "Resume (P)" : "Pause (P)") {
-			p.is_paused = !p.is_paused
-		}
-
-		im.Spacing()
-		im.Text("Keyboard Layout:")
-		im.Text("1 2 3 4")
-		im.Text("Q W E R")
-		im.Text("A S D F")
-		im.Text("Z X C V")
-
-		im.End()
-	}
-
-	// Center emulator viewport window
-	VIEWPORT_X :: PANE_WIDTH + PADDING
-	VIEWPORT_Y :: MENU_BAR_HEIGHT + PADDING
+	// Emulator viewport window
+	VIEWPORT_X :: PADDING
+	VIEWPORT_Y :: (WINDOW_HEIGHT - MENU_BAR_HEIGHT - EMULATOR_HEIGHT) / 2
 	{
 		im.SetNextWindowPos({VIEWPORT_X, VIEWPORT_Y})
 		im.SetNextWindowSize({EMULATOR_WIDTH, EMULATOR_HEIGHT})
@@ -254,23 +214,76 @@ platform_render :: proc(p: ^Platform, c: ^Computer) {
 		im.Image(u64(uintptr(p.texture)), {EMULATOR_WIDTH, EMULATOR_HEIGHT})
 
 		im.PopStyleVar(1)
-
 		im.End()
 	}
 
-	// Right sidebar with additional info
+	// Right sidebar
 	RIGHT_PANE_X :: WINDOW_WIDTH - PANE_WIDTH
 	RIGHT_PANE_Y :: MENU_BAR_HEIGHT
 	{
 		im.SetNextWindowPos({RIGHT_PANE_X, RIGHT_PANE_Y})
 		im.SetNextWindowSize({PANE_WIDTH, PANE_HEIGHT})
-		im.Begin("Info", nil, {.NoMove, .NoResize, .NoCollapse})
+		im.Begin("Info", nil, {.NoMove, .NoResize, .NoCollapse, .NoTitleBar})
 
-		im.Text("Status:")
-		im.Text(p.is_paused ? "PAUSED" : "RUNNING")
+		// Button styling constants
+		BUTTON_WIDTH :: 80
+		BUTTON_HEIGHT :: 30
+		SPACING :: 5
+
+		DOUBLE_BUTTON_WIDTH :: BUTTON_WIDTH * 2 + SPACING
+		DOUBLE_BUTTON_CENTER_X :: (PANE_WIDTH - DOUBLE_BUTTON_WIDTH) * 0.5
+
+		im.Spacing()
+
+		// Centered pause/resume button
+		{
+			im.SetCursorPosX(DOUBLE_BUTTON_CENTER_X)
+
+			if im.Button(p.is_paused ? "Resume" : "Pause", {DOUBLE_BUTTON_WIDTH, BUTTON_HEIGHT}) {
+				p.is_paused = !p.is_paused
+			}
+		}
+
 		im.Spacing()
 		im.Separator()
-		im.Text("Press P to pause/resume")
+		im.Spacing()
+
+		// Emulation Speed Control
+		{
+			// Display current speed as a multiplier
+			speed_multiplier := f32(c.speed) / f32(DEFAULT_COMPUTER_CONFIG.clock_speed)
+			speed_text := fmt.tprintf("%.2fx (%d Hz)", speed_multiplier, c.speed)
+			s := strings.clone_to_cstring(speed_text, allocator = context.temp_allocator)
+
+			text_width := im.CalcTextSize(s).x
+			im.SetCursorPosX((PANE_WIDTH - text_width) * 0.5)
+			im.Text(s)
+
+			im.Spacing()
+
+			im.SetCursorPosX(DOUBLE_BUTTON_CENTER_X)
+
+			MIN_SPEED :: DEFAULT_COMPUTER_CONFIG.clock_speed / 2 // 0.5x
+			MAX_SPEED :: DEFAULT_COMPUTER_CONFIG.clock_speed * 3 // 3.0x
+			SPEED_STEP :: DEFAULT_COMPUTER_CONFIG.clock_speed / 4 // 0.25x
+
+			// Slow down button
+			if im.Button("<<", {BUTTON_WIDTH, BUTTON_HEIGHT}) {
+				c.speed = max(MIN_SPEED, c.speed - SPEED_STEP)
+			}
+
+			im.SameLine()
+			im.SetCursorPosX(DOUBLE_BUTTON_CENTER_X + BUTTON_WIDTH + SPACING)
+
+			// Speed up button
+			if im.Button(">>", {BUTTON_WIDTH, BUTTON_HEIGHT}) {
+				c.speed = min(MAX_SPEED, c.speed + SPEED_STEP)
+			}
+		}
+
+		im.Spacing()
+		im.Separator()
+		im.Spacing()
 
 		im.End()
 	}
@@ -284,6 +297,8 @@ platform_render :: proc(p: ^Platform, c: ^Computer) {
 	im_sdlr.RenderDrawData(im.GetDrawData(), p.renderer)
 
 	sdl3.RenderPresent(p.renderer)
+
+	free_all(context.temp_allocator)
 }
 
 platform_play_sound :: proc(p: ^Platform, c: ^Computer) {
