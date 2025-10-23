@@ -5,8 +5,15 @@ import "core:fmt"
 import "core:math"
 import "vendor:sdl3"
 
-WINDOW_WIDTH :: 960
-WINDOW_HEIGHT :: 480
+import im "shared:imgui"
+import im_sdl "shared:imgui/imgui_impl_sdl3"
+import im_sdlr "shared:imgui/imgui_impl_sdlrenderer3"
+
+WINDOW_WIDTH :: 1280
+WINDOW_HEIGHT :: 720
+
+EMULATOR_WIDTH :: 960
+EMULATOR_HEIGHT :: 480
 
 AUDIO_SAMPLE_RATE :: 8000
 AUDIO_AMPLITUDE :: .75
@@ -22,25 +29,6 @@ Platform :: struct {
     is_paused: bool,
 
     color_scheme: Color_Scheme,
-}
-
-Color_Scheme :: struct {
-    foreground: u32,
-    background: u32,
-}
-
-Color_Scheme_Type :: enum {
-    Classic,
-    Amber,
-    Green,
-    Blue,
-}
-
-BUILTIN_COLORSCHEMES := [Color_Scheme_Type]Color_Scheme {
-    .Classic = {foreground = 0xFFFFFFFF, background = 0x000000FF },
-    .Amber   = {foreground = 0xFFB000FF, background = 0x000000FF},
-    .Green = {foreground = 0x33FF33FF, background = 0x001100FF},
-    .Blue           = {foreground = 0x6495EDFF, background = 0x000033FF},
 }
 
 Platform_Config :: struct {
@@ -68,8 +56,6 @@ platform_init :: proc(config: Platform_Config) -> (p: Platform, ok: bool) {
     }
     defer if !ok { sdl3.DestroyRenderer(p.renderer) }
 
-    sdl3.SetRenderLogicalPresentation(p.renderer, 64, 32, .LETTERBOX)
-
     p.texture = sdl3.CreateTexture(p.renderer, .RGBA8888, .STREAMING, 64, 32)
     if p.texture == nil {
         fmt.eprintfln("Failed to create texture: %v", sdl3.GetError())
@@ -91,6 +77,12 @@ platform_init :: proc(config: Platform_Config) -> (p: Platform, ok: bool) {
     }
     sdl3.ResumeAudioStreamDevice(p.audio_stream)
 
+    im.CHECKVERSION()
+    im.CreateContext()
+
+    im_sdl.InitForSDLRenderer(p.window, p.renderer)
+    im_sdlr.Init(p.renderer)
+
     p.color_scheme = BUILTIN_COLORSCHEMES[config.color_scheme]
 
     return p, true
@@ -103,15 +95,19 @@ platform_run :: proc(p: ^Platform, c: ^Computer) {
         if !p.is_paused {
             computer_process(c)
 
-            platform_render(p, c.display[:])
             platform_play_sound(p, c)
         }
+        platform_render(p, c)
 
         time.sleep(time.Millisecond * 16)
     }
 }
 
 platform_destroy :: proc(p: ^Platform) {
+    im_sdlr.Shutdown()
+    im_sdl.Shutdown()
+    im.DestroyContext()
+
     if p.audio_stream != nil {
         sdl3.PauseAudioStreamDevice(p.audio_stream)
         sdl3.DestroyAudioStream(p.audio_stream)
@@ -127,6 +123,8 @@ platform_destroy :: proc(p: ^Platform) {
 platform_handle_events :: proc(p: ^Platform, c: ^Computer) {
     e: sdl3.Event
     for sdl3.PollEvent(&e) {
+        im_sdl.ProcessEvent(&e)
+
         #partial switch e.type {
             case .QUIT:
                 p.should_quit = true
@@ -179,24 +177,105 @@ platform_handle_key :: proc(p: ^Platform, c: ^Computer, scancode: sdl3.Scancode,
     }
 }
 
-platform_render :: proc(p: ^Platform, display: []u8) {
+platform_render :: proc(p: ^Platform, c: ^Computer) {
+    draw_computer_display_to_texture(p.texture, c.display[:], p.color_scheme)
+
+    // Start ImGui frame
+    im_sdlr.NewFrame()
+    im_sdl.NewFrame()
+    im.NewFrame()
+
+    // Create a main menu bar at the top
+    MENU_BAR_HEIGHT :: 20
+    
+    if im.BeginMainMenuBar() {
+        if im.BeginMenu("File") {
+            if im.MenuItem("Open") {
+
+            }
+
+            if im.MenuItem("Exit") {
+                p.should_quit = true
+            }
+
+            im.EndMenu()
+        }
+        im.EndMainMenuBar()
+    }
+
+
+    PADDING :: 10
+    PANE_WIDTH :: (WINDOW_WIDTH - EMULATOR_WIDTH - PADDING * 2) / 2
+    PANE_HEIGHT :: WINDOW_HEIGHT - MENU_BAR_HEIGHT
+
+    // Left sidebar with controls
+    LEFT_PANE_X :: 0
+    LEFT_PANE_Y :: MENU_BAR_HEIGHT
+    {
+        im.SetNextWindowPos({LEFT_PANE_X, LEFT_PANE_Y})
+        im.SetNextWindowSize({PANE_WIDTH, PANE_HEIGHT})
+        im.Begin("Controls", nil, {.NoMove, .NoResize, .NoCollapse})
+
+        im.Text("Emulator Controls")
+        im.Separator()
+
+        if im.Button(p.is_paused ? "Resume (P)" : "Pause (P)") {
+            p.is_paused = !p.is_paused
+        }
+
+        im.Spacing()
+        im.Text("Keyboard Layout:")
+        im.Text("1 2 3 4")
+        im.Text("Q W E R")
+        im.Text("A S D F")
+        im.Text("Z X C V")
+
+        im.End()
+    }
+
+    // Center emulator viewport window
+    VIEWPORT_X :: PANE_WIDTH + PADDING
+    VIEWPORT_Y :: MENU_BAR_HEIGHT + PADDING
+    {
+        im.SetNextWindowPos({VIEWPORT_X, VIEWPORT_Y})
+        im.SetNextWindowSize({EMULATOR_WIDTH, EMULATOR_HEIGHT})
+
+        im.PushStyleVarImVec2(.WindowPadding, {0, 0})
+        im.Begin("CHIP-8 Display", nil, {.NoMove, .NoResize, .NoCollapse, .NoTitleBar, .NoScrollbar})
+
+        // Display the emulator texture as an image in ImGui
+        im.Image(u64(uintptr(p.texture)), {EMULATOR_WIDTH, EMULATOR_HEIGHT})
+
+        im.PopStyleVar(1)
+
+        im.End()
+    }
+
+    // Right sidebar with additional info
+    RIGHT_PANE_X :: WINDOW_WIDTH - PANE_WIDTH
+    RIGHT_PANE_Y :: MENU_BAR_HEIGHT
+    {
+        im.SetNextWindowPos({RIGHT_PANE_X, RIGHT_PANE_Y})
+        im.SetNextWindowSize({PANE_WIDTH, PANE_HEIGHT})
+        im.Begin("Info", nil, {.NoMove, .NoResize, .NoCollapse})
+
+        im.Text("Status:")
+        im.Text(p.is_paused ? "PAUSED" : "RUNNING")
+        im.Spacing()
+        im.Separator()
+        im.Text("Press P to pause/resume")
+
+        im.End()
+    }
+
+    im.Render()
+
+    sdl3.SetRenderDrawColorFloat(p.renderer, 0.1, 0.1, 0.1, 1)
     sdl3.RenderClear(p.renderer)
 
-    pitch : i32 = 0
-    pixels: rawptr
-    
-    sdl3.LockTexture(p.texture, nil, &pixels, &pitch)
-    buffer := ([^]u32)(pixels)[:64*32]
-    for pixel, idx in display {
-        if pixel == 1 {
-            buffer[idx] = p.color_scheme.foreground
-        } else {
-            buffer[idx] = p.color_scheme.background
-        }
-    }
-    sdl3.UnlockTexture(p.texture)
+    // Render ImGui (which includes our texture as an image)
+    im_sdlr.RenderDrawData(im.GetDrawData(), p.renderer)
 
-    sdl3.RenderTexture(p.renderer, p.texture, nil, nil)
     sdl3.RenderPresent(p.renderer)
 }
 
@@ -221,4 +300,20 @@ generate_audio_samples :: proc(buffer: []f32) {
             phase -= 2.0 * math.PI
         }
     }
+}
+
+draw_computer_display_to_texture :: proc(tex: ^sdl3.Texture, display: []u8, color_scheme: Color_Scheme) {
+    pitch : i32 = 0
+    pixels: rawptr
+
+    sdl3.LockTexture(tex, nil, &pixels, &pitch)
+    buffer := ([^]u32)(pixels)[:64*32]
+    for pixel, idx in display {
+        if pixel == 1 {
+            buffer[idx] = color_scheme.foreground
+        } else {
+            buffer[idx] = color_scheme.background
+        }
+    }
+    sdl3.UnlockTexture(tex)
 }
