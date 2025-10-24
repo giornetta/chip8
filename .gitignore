@@ -3,3 +3,4 @@
 bin/
 programs/roms
 chip8
+imgui.ini

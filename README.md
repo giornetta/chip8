@@ -26,11 +26,32 @@ CHIP-8 is an interpreted programming language developed in the mid-1970s. It was
 
 - [Odin compiler](https://odin-lang.org/)
 - SDL3 development libraries
+- Python 3 (for building imgui bindings)
 
 ## Building
 
+### 1. Initialize submodules
+
+After cloning the repository, initialize and update the git submodules:
+
 ```bash
-odin build src -out:chip8
+git submodule update --init --recursive
+```
+
+### 2. Build imgui bindings
+
+Navigate to the imgui dependency directory and run the build script to generate the Odin bindings:
+
+```bash
+cd deps/imgui
+python3 build.py
+cd ../..
+```
+
+### 3. Build the emulator
+
+```bash
+make
 ```
 
 ## Usage
