@@ -2,6 +2,8 @@
 
 A CHIP-8 emulator written in [Odin](https://odin-lang.org/).
 
+https://github.com/user-attachments/assets/64b8ed78-42bf-4add-9b88-e36f953f85a7
+
 ## About CHIP-8
 
 CHIP-8 is an interpreted programming language developed in the mid-1970s. It was designed to make game programming easier for the COSMAC VIP and Telmac 1800 8-bit microcomputers. CHIP-8 programs are run on a virtual machine with:
