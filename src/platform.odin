@@ -184,116 +184,11 @@ platform_handle_key :: proc(p: ^Platform, c: ^Computer, scancode: sdl3.Scancode,
 platform_render :: proc(p: ^Platform, c: ^Computer) {
 	draw_computer_display_to_texture(p.texture, c.display[:], p.color_scheme)
 
-	// Start ImGui frame
-	im_sdlr.NewFrame()
-	im_sdl.NewFrame()
-	im.NewFrame()
-
-	MENU_BAR_HEIGHT :: 0
-
-
-	PADDING :: 10
-	PANE_WIDTH :: (WINDOW_WIDTH - EMULATOR_WIDTH - PADDING * 2)
-	PANE_HEIGHT :: WINDOW_HEIGHT - MENU_BAR_HEIGHT
-
-	// Emulator viewport window
-	VIEWPORT_X :: PADDING
-	VIEWPORT_Y :: (WINDOW_HEIGHT - MENU_BAR_HEIGHT - EMULATOR_HEIGHT) / 2
-	{
-		im.SetNextWindowPos({VIEWPORT_X, VIEWPORT_Y})
-		im.SetNextWindowSize({EMULATOR_WIDTH, EMULATOR_HEIGHT})
-
-		im.PushStyleVarImVec2(.WindowPadding, {0, 0})
-		im.Begin(
-			"CHIP-8 Display",
-			nil,
-			{.NoMove, .NoResize, .NoCollapse, .NoTitleBar, .NoScrollbar},
-		)
-
-		// Display the emulator texture as an image in ImGui
-		im.Image(u64(uintptr(p.texture)), {EMULATOR_WIDTH, EMULATOR_HEIGHT})
-
-		im.PopStyleVar(1)
-		im.End()
-	}
-
-	// Right sidebar
-	RIGHT_PANE_X :: WINDOW_WIDTH - PANE_WIDTH
-	RIGHT_PANE_Y :: MENU_BAR_HEIGHT
-	{
-		im.SetNextWindowPos({RIGHT_PANE_X, RIGHT_PANE_Y})
-		im.SetNextWindowSize({PANE_WIDTH, PANE_HEIGHT})
-		im.Begin("Info", nil, {.NoMove, .NoResize, .NoCollapse, .NoTitleBar})
-
-		// Button styling constants
-		BUTTON_WIDTH :: 80
-		BUTTON_HEIGHT :: 30
-		SPACING :: 5
-
-		DOUBLE_BUTTON_WIDTH :: BUTTON_WIDTH * 2 + SPACING
-		DOUBLE_BUTTON_CENTER_X :: (PANE_WIDTH - DOUBLE_BUTTON_WIDTH) * 0.5
-
-		im.Spacing()
-
-		// Centered pause/resume button
-		{
-			im.SetCursorPosX(DOUBLE_BUTTON_CENTER_X)
-
-			if im.Button(p.is_paused ? "Resume" : "Pause", {DOUBLE_BUTTON_WIDTH, BUTTON_HEIGHT}) {
-				p.is_paused = !p.is_paused
-			}
-		}
-
-		im.Spacing()
-		im.Separator()
-		im.Spacing()
-
-		// Emulation Speed Control
-		{
-			// Display current speed as a multiplier
-			speed_multiplier := f32(c.speed) / f32(DEFAULT_COMPUTER_CONFIG.clock_speed)
-			speed_text := fmt.tprintf("%.2fx (%d Hz)", speed_multiplier, c.speed)
-			s := strings.clone_to_cstring(speed_text, allocator = context.temp_allocator)
-
-			text_width := im.CalcTextSize(s).x
-			im.SetCursorPosX((PANE_WIDTH - text_width) * 0.5)
-			im.Text(s)
-
-			im.Spacing()
-
-			im.SetCursorPosX(DOUBLE_BUTTON_CENTER_X)
-
-			MIN_SPEED :: DEFAULT_COMPUTER_CONFIG.clock_speed / 2 // 0.5x
-			MAX_SPEED :: DEFAULT_COMPUTER_CONFIG.clock_speed * 3 // 3.0x
-			SPEED_STEP :: DEFAULT_COMPUTER_CONFIG.clock_speed / 4 // 0.25x
-
-			// Slow down button
-			if im.Button("<<", {BUTTON_WIDTH, BUTTON_HEIGHT}) {
-				c.speed = max(MIN_SPEED, c.speed - SPEED_STEP)
-			}
-
-			im.SameLine()
-			im.SetCursorPosX(DOUBLE_BUTTON_CENTER_X + BUTTON_WIDTH + SPACING)
-
-			// Speed up button
-			if im.Button(">>", {BUTTON_WIDTH, BUTTON_HEIGHT}) {
-				c.speed = min(MAX_SPEED, c.speed + SPEED_STEP)
-			}
-		}
-
-		im.Spacing()
-		im.Separator()
-		im.Spacing()
-
-		im.End()
-	}
-
-	im.Render()
+	draw_interface(p, c)
 
 	sdl3.SetRenderDrawColorFloat(p.renderer, 0.1, 0.1, 0.1, 1)
 	sdl3.RenderClear(p.renderer)
 
-	// Render ImGui (which includes our texture as an image)
 	im_sdlr.RenderDrawData(im.GetDrawData(), p.renderer)
 
 	sdl3.RenderPresent(p.renderer)
@@ -342,4 +237,177 @@ draw_computer_display_to_texture :: proc(
 		}
 	}
 	sdl3.UnlockTexture(tex)
+}
+
+draw_interface :: proc(p: ^Platform, c: ^Computer) {
+	im_sdlr.NewFrame()
+	im_sdl.NewFrame()
+	im.NewFrame()
+
+	PADDING :: 10
+	FONT_SIZE :: 13
+
+	/*****************
+	 * Main Menu Bar *
+	 *****************/
+	MENU_BAR_HEIGHT :: FONT_SIZE + PADDING * 2
+
+	im.PushStyleVarImVec2(.FramePadding, {PADDING, PADDING})
+	if im.BeginMainMenuBar() {
+		if im.BeginMenu("Options") {
+			if im.BeginMenu("Color Scheme") {
+				if im.MenuItem("Classic", "", p.color_scheme == BUILTIN_COLORSCHEMES[.Classic]) {
+					p.color_scheme = BUILTIN_COLORSCHEMES[.Classic]
+				}
+				if im.MenuItem("Amber", "", p.color_scheme == BUILTIN_COLORSCHEMES[.Amber]) {
+					p.color_scheme = BUILTIN_COLORSCHEMES[.Amber]
+				}
+				if im.MenuItem("Green", "", p.color_scheme == BUILTIN_COLORSCHEMES[.Green]) {
+					p.color_scheme = BUILTIN_COLORSCHEMES[.Green]
+				}
+				if im.MenuItem("Blue", "", p.color_scheme == BUILTIN_COLORSCHEMES[.Blue]) {
+					p.color_scheme = BUILTIN_COLORSCHEMES[.Blue]
+				}
+				im.EndMenu()
+			}
+
+			im.EndMenu()
+		}
+
+		im.EndMainMenuBar()
+	}
+	im.PopStyleVar(1)
+
+
+	CONTROL_BAR_HEIGHT :: 60
+
+	/*********************
+	 * Emulator Viewport *
+	 *********************/
+	VIEWPORT_X :: (WINDOW_WIDTH - EMULATOR_WIDTH) / 2
+	VIEWPORT_Y ::
+		MENU_BAR_HEIGHT +
+		(WINDOW_HEIGHT - MENU_BAR_HEIGHT - CONTROL_BAR_HEIGHT - EMULATOR_HEIGHT) / 2
+	{
+		im.SetNextWindowPos({VIEWPORT_X, VIEWPORT_Y})
+		im.SetNextWindowSize({EMULATOR_WIDTH, EMULATOR_HEIGHT})
+
+		im.PushStyleVarImVec2(.WindowPadding, {0, 0})
+		im.Begin(
+			"CHIP-8 Display",
+			nil,
+			{.NoMove, .NoResize, .NoCollapse, .NoTitleBar, .NoScrollbar},
+		)
+
+		// Display the emulator texture as an image in ImGui
+		im.Image(u64(uintptr(p.texture)), {EMULATOR_WIDTH, EMULATOR_HEIGHT})
+
+		im.PopStyleVar(1)
+		im.End()
+	}
+
+	/**********************
+	 * Bottom Control Bar *
+	 **********************/
+	CONTROL_BAR_Y :: WINDOW_HEIGHT - CONTROL_BAR_HEIGHT
+	{
+		im.SetNextWindowPos({0, CONTROL_BAR_Y})
+		im.SetNextWindowSize({WINDOW_WIDTH, CONTROL_BAR_HEIGHT})
+		im.Begin("Controls", nil, {.NoMove, .NoResize, .NoCollapse, .NoTitleBar})
+
+		BUTTON_WIDTH :: 80
+		BUTTON_HEIGHT :: 40
+		SPACING :: 10
+
+		TOTAL_WIDTH :: BUTTON_WIDTH * 3 + SPACING * 2
+		START_X :: (WINDOW_WIDTH - TOTAL_WIDTH) * 0.5
+
+		VERTICAL_PADDING :: (CONTROL_BAR_HEIGHT - BUTTON_HEIGHT) * 0.5
+		im.SetCursorPosY(VERTICAL_PADDING)
+		im.SetCursorPosX(START_X)
+
+		MIN_SPEED :: DEFAULT_COMPUTER_CONFIG.clock_speed / 2 // 0.5x
+		MAX_SPEED :: DEFAULT_COMPUTER_CONFIG.clock_speed * 3 // 3.0x
+		SPEED_STEP :: DEFAULT_COMPUTER_CONFIG.clock_speed / 4 // 0.25x
+
+		// Slow down button [<<]
+		if im.Button("<<", {BUTTON_WIDTH, BUTTON_HEIGHT}) {
+			c.speed = max(MIN_SPEED, c.speed - SPEED_STEP)
+		}
+
+		im.SameLine()
+		im.SetCursorPosX(START_X + BUTTON_WIDTH + SPACING)
+
+		// Pause/Resume button
+		if im.Button(p.is_paused ? "Play" : "Pause", {BUTTON_WIDTH, BUTTON_HEIGHT}) {
+			p.is_paused = !p.is_paused
+		}
+
+		im.SameLine()
+		im.SetCursorPosX(START_X + BUTTON_WIDTH * 2 + SPACING * 2)
+
+		// Speed up button [>>]
+		if im.Button(">>", {BUTTON_WIDTH, BUTTON_HEIGHT}) {
+			c.speed = min(MAX_SPEED, c.speed + SPEED_STEP)
+		}
+
+
+		im.End()
+	}
+
+	// Speed indicator overlay
+	{
+		@(static) last_speed: i64 = 0
+		@(static) speed_change_time: time.Time
+
+		if c.speed != last_speed {
+			last_speed = c.speed
+			speed_change_time = time.now()
+		}
+
+		elapsed := time.since(speed_change_time)
+		DISPLAY_DURATION :: 1000 * time.Millisecond
+		FADE_DURATION :: 250 * time.Millisecond
+
+		if elapsed < DISPLAY_DURATION {
+			alpha: f32 = 1.0
+			if elapsed > DISPLAY_DURATION - FADE_DURATION {
+				fade_progress := f32(
+					time.duration_seconds(elapsed - (DISPLAY_DURATION - FADE_DURATION)),
+				)
+				alpha = 1.0 - fade_progress / f32(time.duration_seconds(FADE_DURATION))
+			}
+
+			speed_multiplier := f32(c.speed) / f32(DEFAULT_COMPUTER_CONFIG.clock_speed)
+			speed_text := fmt.tprintf("Speed: %.2fx", speed_multiplier)
+			speed_ctext := strings.clone_to_cstring(speed_text, allocator = context.temp_allocator)
+
+			text_size := im.CalcTextSize(speed_ctext)
+			OVERLAY_PADDING :: 15
+			overlay_width := text_size.x + OVERLAY_PADDING * 2
+			overlay_height := text_size.y + OVERLAY_PADDING * 2
+			overlay_x := (WINDOW_WIDTH - overlay_width) / 2
+			overlay_y := WINDOW_HEIGHT - CONTROL_BAR_HEIGHT - overlay_height - 20
+
+			im.SetNextWindowPos({overlay_x, overlay_y})
+			im.SetNextWindowSize({overlay_width, overlay_height})
+			im.SetNextWindowBgAlpha(alpha * 0.8)
+
+			im.PushStyleVarImVec2(.WindowPadding, {OVERLAY_PADDING, OVERLAY_PADDING})
+			im.Begin(
+				"Speed Indicator",
+				nil,
+				{.NoTitleBar, .NoResize, .NoMove, .NoScrollbar, .NoNavInputs, .NoMouseInputs},
+			)
+
+			im.PushStyleColorImVec4(.Text, {1, 1, 1, alpha})
+			im.Text(speed_ctext)
+			im.PopStyleColor(1)
+
+			im.PopStyleVar(1)
+			im.End()
+		}
+	}
+
+	im.Render()
 }
