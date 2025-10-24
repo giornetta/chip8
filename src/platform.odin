@@ -6,9 +6,9 @@ import "core:strings"
 import "core:time"
 import "vendor:sdl3"
 
-import im "shared:imgui"
-import im_sdl "shared:imgui/imgui_impl_sdl3"
-import im_sdlr "shared:imgui/imgui_impl_sdlrenderer3"
+import im "deps:imgui"
+import im_sdl "deps:imgui/imgui_impl_sdl3"
+import im_sdlr "deps:imgui/imgui_impl_sdlrenderer3"
 
 WINDOW_WIDTH :: 1280
 WINDOW_HEIGHT :: 720
