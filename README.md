@@ -1,6 +1,6 @@
 # CHIP-8 Emulator
 
-A CHIP-8 emulator written in [Odin](https://odin-lang.org/) with SDL3 for graphics rendering.
+A CHIP-8 emulator written in [Odin](https://odin-lang.org/).
 
 ## About CHIP-8
 
@@ -80,12 +80,6 @@ CHIP-8 Keypad          Keyboard
 │ A │ 0 │ B │ F │      │ Z │ X │ C │ V │
 └───┴───┴───┴───┘      └───┴───┴───┴───┘
 ```
-
-### Emulator Controls
-
-The emulator provides the following controls:
-
-- **P** - Pause/unpause emulation
 
 ## Technical Details
 

@@ -141,6 +141,49 @@ platform_handle_events :: proc(p: ^Platform, c: ^Computer) {
 }
 
 platform_handle_key :: proc(p: ^Platform, c: ^Computer, scancode: sdl3.Scancode, value: u8) {
+<<<<<<< Updated upstream
+=======
+<<<<<<< Updated upstream
+    #partial switch scancode {
+        case ._1:
+            c.keys[0x1] = value
+        case ._2:
+            c.keys[0x2] = value
+        case ._3:
+            c.keys[0x3] = value
+        case ._4:
+            c.keys[0xC] = value
+        case .Q:
+            c.keys[0x4] = value
+        case .W:
+            c.keys[0x5] = value
+        case .E:
+            c.keys[0x6] = value
+        case .R:
+            c.keys[0xD] = value
+        case .A:
+            c.keys[0x7] = value
+        case .S:
+            c.keys[0x8] = value
+        case .D:
+            c.keys[0x9] = value
+        case .F:
+            c.keys[0xE] = value
+        case .Z:
+            c.keys[0xA] = value
+        case .X:
+            c.keys[0x0] = value
+        case .C:
+            c.keys[0xB] = value
+        case .V:
+            c.keys[0xF] = value
+        case .P:
+            if value == 0 {
+                p.is_paused = !p.is_paused
+            }
+    }
+=======
+>>>>>>> Stashed changes
 	#partial switch scancode {
 	case ._1:
 		c.keys[0x1] = value
@@ -174,11 +217,16 @@ platform_handle_key :: proc(p: ^Platform, c: ^Computer, scancode: sdl3.Scancode,
 		c.keys[0xB] = value
 	case .V:
 		c.keys[0xF] = value
+<<<<<<< Updated upstream
 	case .P:
 		if value == 0 {
 			p.is_paused = !p.is_paused
 		}
 	}
+=======
+	}
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
 }
 
 platform_render :: proc(p: ^Platform, c: ^Computer) {
