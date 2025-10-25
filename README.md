@@ -40,9 +40,9 @@ After cloning the repository, initialize and update the git submodules:
 git submodule update --init --recursive
 ```
 
-### 2. Build imgui bindings
+### 2. Build Dear Imgui bindings
 
-Navigate to the imgui dependency directory and run the build script to generate the Odin bindings:
+Navigate to the imgui dependency directory and run the build script to generate the SDL3 Odin bindings for Dear Imgui:
 
 ```bash
 cd deps/imgui
