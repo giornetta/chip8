@@ -83,30 +83,11 @@ CHIP-8 Keypad          Keyboard
 └───┴───┴───┴───┘      └───┴───┴───┴───┘
 ```
 
-## Technical Details
-
-### Memory Map
-
-```
-0x000-0x1FF  Reserved (interpreter area)
-0x050-0x0A0  Font data (16 characters × 5 bytes)
-0x200-0xFFF  Program ROM and RAM
-```
-
-### Display
-
-- Resolution: 64×32 pixels
-- Format: Monochrome
-- Rendering: XOR-based sprite drawing
-- Window size: 960×480 (15× upscaling)
-
-### Timers
-
-Both delay and sound timers decrement at 60Hz when non-zero. The sound timer should trigger audio output while greater than zero.
-
 ## ROMs
 
-CHIP-8 ROM files typically have the `.ch8` extension. You can find public domain ROMs and test programs online. The emulator loads ROMs starting at memory address 0x200.
+CHIP-8 ROM files typically have the `.ch8` extension. You can find public domain ROMs online!
+
+**Note**: The ROM featured in the video at the beginning of this README file is called **Slippery Slope**, and it's a very fun little game you can download from the [CHIP-8 Archive](https://johnearnest.github.io/chip8Archive/)!
 
 ## References
 
